@@ -36,6 +36,14 @@ const ServicesPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [servicesPerPage] = useState(6);
 
+  // Calculate average rating from reviews array
+  const calculateAverageRating = (reviews) => {
+    if (!Array.isArray(reviews) || reviews.length === 0) return 0;
+    const sum = reviews.reduce((total, review) => total + (review.rating || 0), 0);
+    const average = sum / reviews.length;
+    return Math.round(average * 2) / 2;
+  };
+
   // Fetch services and categories from API
   useEffect(() => {
     const fetchData = async () => {
@@ -51,7 +59,7 @@ const ServicesPage = () => {
         const categoriesData = await categoriesResponse.json();
         const categoryNames = [
           "All Categories",
-          ...categoriesData.map((cat) => cat.name),
+          ...categoriesData.map((cat) => cat.name || ""),
         ];
         setCategories(categoryNames);
 
@@ -79,7 +87,7 @@ const ServicesPage = () => {
     // Apply category filter
     if (categoryFilter !== "All Categories") {
       results = results.filter(
-        (service) => service.category === categoryFilter
+        (service) => service?.category === categoryFilter
       );
     }
 
@@ -87,20 +95,20 @@ const ServicesPage = () => {
     if (priceFilter !== "All Prices") {
       switch (priceFilter) {
         case "$0 - $50":
-          results = results.filter((service) => service.price <= 50);
+          results = results.filter((service) => (service?.price || 0) <= 50);
           break;
         case "$50 - $100":
           results = results.filter(
-            (service) => service.price > 50 && service.price <= 100
+            (service) => (service?.price || 0) > 50 && (service?.price || 0) <= 100
           );
           break;
         case "$100 - $200":
           results = results.filter(
-            (service) => service.price > 100 && service.price <= 200
+            (service) => (service?.price || 0) > 100 && (service?.price || 0) <= 200
           );
           break;
         case "$200+":
-          results = results.filter((service) => service.price > 200);
+          results = results.filter((service) => (service?.price || 0) > 200);
           break;
       }
     }
@@ -108,7 +116,9 @@ const ServicesPage = () => {
     // Apply rating filter
     if (ratingFilter !== "All Ratings") {
       const minRating = parseFloat(ratingFilter.split(" ")[0]);
-      results = results.filter((service) => service.rating >= minRating);
+      results = results.filter((service) => 
+        calculateAverageRating(service?.reviews) >= minRating
+      );
     }
 
     // Apply search query
@@ -116,9 +126,9 @@ const ServicesPage = () => {
       const query = searchQuery.toLowerCase();
       results = results.filter(
         (service) =>
-          service.title.toLowerCase().includes(query) ||
-          service.description.toLowerCase().includes(query) ||
-          service.provider.toLowerCase().includes(query)
+          (service?.title || "").toLowerCase().includes(query) ||
+          (service?.description || "").toLowerCase().includes(query) ||
+          (service?.provider || "").toLowerCase().includes(query)
       );
     }
 
@@ -126,23 +136,28 @@ const ServicesPage = () => {
     if (locationQuery) {
       const query = locationQuery.toLowerCase();
       results = results.filter((service) =>
-        service.location.toLowerCase().includes(query)
+        (service?.location || "").toLowerCase().includes(query)
       );
     }
 
     // Apply sorting
     switch (sortBy) {
       case "Price: Low to High":
-        results.sort((a, b) => a.price - b.price);
+        results.sort((a, b) => (a?.price || 0) - (b?.price || 0));
         break;
       case "Price: High to Low":
-        results.sort((a, b) => b.price - a.price);
+        results.sort((a, b) => (b?.price || 0) - (a?.price || 0));
         break;
       case "Top Rated":
-        results.sort((a, b) => b.rating - a.rating);
+        results.sort((a, b) => 
+          calculateAverageRating(b?.reviews) - calculateAverageRating(a?.reviews)
+        );
         break;
       case "Most Popular":
-        results.sort((a, b) => b.reviews - a.reviews);
+        results.sort((a, b) => 
+          (Array.isArray(b?.reviews) ? b.reviews.length : 0) - 
+          (Array.isArray(a?.reviews) ? a.reviews.length : 0)
+        );
         break;
     }
 
@@ -207,19 +222,24 @@ const ServicesPage = () => {
   };
 
   const renderStars = (rating) => {
+    const roundedRating = Math.round(rating * 2) / 2; 
     return (
       <div className="flex items-center">
         {[...Array(5)].map((_, i) => (
           <Star
             key={i}
             className={`h-4 w-4 ${
-              i < Math.floor(rating)
+              i < Math.floor(roundedRating)
                 ? "text-yellow-400 fill-current"
+                : i < roundedRating
+                ? "text-yellow-400 fill-current opacity-80" // Half star
                 : "text-gray-300"
             }`}
           />
         ))}
-        <span className="ml-1 text-gray-800 font-medium">{rating}</span>
+        <span className="ml-1 text-gray-800 font-medium">
+          {roundedRating.toFixed(1)}
+        </span>
       </div>
     );
   };
@@ -603,11 +623,11 @@ const ServicesPage = () => {
                 >
                   <div className="relative">
                     <img
-                      src={service.image || "/api/placeholder/400/300"}
-                      alt={service.title}
+                      src={service?.image || "/api/placeholder/400/300"}
+                      alt={service?.title || "Service image"}
                       className="w-full h-48 object-cover"
                     />
-                    {service.badges && service.badges.length > 0 && (
+                    {service?.badges && service.badges.length > 0 && (
                       <div className="absolute top-2 left-2 flex flex-wrap gap-2">
                         {service.badges.map((badge, index) => (
                           <span
@@ -628,49 +648,49 @@ const ServicesPage = () => {
                       </div>
                     )}
                     <div className="absolute bottom-2 right-2 bg-white rounded-full py-1 px-3 text-sm font-bold text-gray-900">
-                      ${service.price}
+                      ${service?.price || 0}
                     </div>
                   </div>
 
                   <div className="p-4">
                     <div className="flex items-center mb-2">
                       <span className="px-2 py-1 bg-[#e0f2f5] text-[#4a8a96] text-xs font-medium rounded">
-                        {service.category}
+                        {service?.category || "Uncategorized"}
                       </span>
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-1 hover:text-[#68b5c2]">
-                      {service.title}
+                      {service?.name || "Untitled Service"}
                     </h3>
                     <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                      {service.description}
+                      {service?.description || "No description available"}
                     </p>
 
                     <div className="flex items-center mb-3">
                       <div className="flex-shrink-0">
                         <img
                           src={
-                            service.providerImage || "/api/placeholder/50/50"
+                            service?.providerImage || "/api/placeholder/50/50"
                           }
-                          alt={service.provider}
+                          alt={service?.email || "Provider"}
                           className="h-6 w-6 rounded-full"
                         />
                       </div>
                       <span className="ml-2 text-sm text-gray-600">
-                        {service.provider}
+                        {service?.email || "Unknown Provider"}
                       </span>
                     </div>
 
                     <div className="flex items-center mb-3">
                       <MapPin className="h-4 w-4 text-gray-400 mr-1" />
                       <span className="text-sm text-gray-600">
-                        {service.location}
+                        {service?.location || "Location not specified"}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between">
-                      {renderStars(service.rating)}
+                      {renderStars(calculateAverageRating(service?.reviews))}
                       <span className="text-gray-500 text-sm">
-                        {service.reviews} reviews
+                        {Array.isArray(service?.reviews) ? service.reviews.length : 0} reviews
                       </span>
                     </div>
 
@@ -678,7 +698,7 @@ const ServicesPage = () => {
                     {!isAdmin && !isProvider && (
                       <button
                         onClick={() =>
-                          (window.location.href = `/booking/${service._id}`)
+                          (window.location.href = `/booking/${service?._id}`)
                         }
                         className="mt-4 w-full bg-[#68b5c2] hover:bg-[#4a9ba8] text-white font-medium py-2 rounded-md"
                       >
