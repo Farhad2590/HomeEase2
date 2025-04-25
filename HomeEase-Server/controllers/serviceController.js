@@ -1,4 +1,4 @@
-const ServiceModel = require('../models/serviceModel');
+const ServiceModel = require("../models/serviceModel");
 
 const serviceController = {
   getAllServices: async (req, res) => {
@@ -30,17 +30,18 @@ const serviceController = {
       const email = req.params.email;
       const result = await ServiceModel.getServicesByEmail(email);
       // console.log('Email:', email, 'Result:', result);
-      
-      if (result && result.length > 0) {  // Check for array length
+
+      if (result && result.length > 0) {
+        // Check for array length
         res.status(200).json(result);
       } else {
         res.status(404).json({ message: "No services found for this email" });
       }
     } catch (error) {
       console.error("Error fetching services:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Internal Server Error",
-        details: error.message 
+        details: error.message,
       });
     }
   },
@@ -69,12 +70,35 @@ const serviceController = {
     try {
       const id = req.params.id;
       const updatedData = req.body;
+      if (!id || !updatedData) {
+        return res.status(400).json({
+          error: "Missing required fields",
+          details: "Both ID and update data are required",
+        });
+      }
+
       const result = await ServiceModel.updateService(id, updatedData);
-      res.send(result);
+
+      if (result.matchedCount === 0) {
+        return res.status(404).json({
+          message: "Service not found",
+          details: `No service found with ID: ${id}`,
+        });
+      }
+
+      res.status(200).json({
+        message: "Service updated successfully",
+        data: result,
+      });
     } catch (error) {
-      res.status(500).send({ error: error.message });
+      console.error("Detailed update error:", error);
+      res.status(500).json({
+        error: "Internal Server Error",
+        details: error.message,
+        stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+      });
     }
-  }
+  },
 };
 
 module.exports = serviceController;
