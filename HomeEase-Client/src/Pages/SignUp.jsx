@@ -38,6 +38,7 @@ const SignUpForm = ({ userType }) => {
           mobile: form.mobile.value,
           photo: result.user.photoURL || "https://i.ibb.co/ScLz5b5/pic1.jpg",
           createdAt: new Date().toISOString(),
+          balance :0 ,
           role: userType === "service_provider" ? "provider" : "receiver",
         };
         
